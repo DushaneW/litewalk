@@ -1,0 +1,66 @@
+name: release
+
+# Builds release binaries when a version tag is pushed and attaches them, with SHA-256
+# checksums, to a GitHub release. These targets have not all been run by the maintainer; the
+# first tagged release is the first real test of this workflow.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu }
+          - { os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc }
+          - { os: macos-latest, target: x86_64-apple-darwin }
+          - { os: macos-latest, target: aarch64-apple-darwin }
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install stable --profile minimal -t ${{ matrix.target }}
+      - run: cargo build --release --locked --target ${{ matrix.target }} --bin litewalk
+      - name: Package
+        shell: bash
+        run: |
+          name="litewalk-${GITHUB_REF_NAME}-${{ matrix.target }}"
+          mkdir "$name"
+          exe=litewalk
+          if [[ "${{ matrix.target }}" == *windows* ]]; then exe=litewalk.exe; fi
+          cp "target/${{ matrix.target }}/release/$exe" README.md LICENSE CHANGELOG.md "$name/"
+          if [[ "${{ matrix.target }}" == *windows* ]]; then
+            7z a "$name.zip" "$name" > /dev/null
+            archive="$name.zip"
+          else
+            tar czf "$name.tar.gz" "$name"
+            archive="$name.tar.gz"
+          fi
+          if command -v sha256sum > /dev/null; then sha256sum "$archive" > "$archive.sha256"; else shasum -a 256 "$archive" > "$archive.sha256"; fi
+          echo "ARCHIVE=$archive" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: |
+            ${{ env.ARCHIVE }}
+            ${{ env.ARCHIVE }}.sha256
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Combine checksums
+        run: cd dist && cat *.sha256 > SHA256SUMS && rm *.sha256
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*

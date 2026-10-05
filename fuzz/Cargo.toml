@@ -1,0 +1,44 @@
+[package]
+name = "litewalk-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+litewalk = { path = ".." }
+
+[[bin]]
+name = "fuzz_header"
+path = "fuzz_targets/fuzz_header.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_varint"
+path = "fuzz_targets/fuzz_varint.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_record"
+path = "fuzz_targets/fuzz_record.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_wal"
+path = "fuzz_targets/fuzz_wal.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_database"
+path = "fuzz_targets/fuzz_database.rs"
+test = false
+doc = false
+
+[workspace]

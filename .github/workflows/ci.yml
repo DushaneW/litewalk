@@ -1,0 +1,48 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, ${{ matrix.toolchain }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        toolchain: [stable, "1.75"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        shell: bash
+        run: |
+          rustup toolchain install ${{ matrix.toolchain }} --profile minimal -c rustfmt,clippy
+          rustup default ${{ matrix.toolchain }}
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ matrix.os }}-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets --all-features --locked -- -D warnings
+      - run: cargo test --all-features --locked
+      - run: cargo test --doc --locked
+      - run: cargo build --release --locked
+      - run: cargo doc --no-deps --locked
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+  fuzz-build:
+    name: fuzz targets build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install nightly --profile minimal
+      - run: cargo +nightly build --manifest-path fuzz/Cargo.toml --bins

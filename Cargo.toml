@@ -1,0 +1,31 @@
+[package]
+name = "litewalk"
+version = "0.2.0"
+edition = "2021"
+rust-version = "1.75"
+description = "Dependency-free, read-only reader and inspector for the SQLite on-disk format, verified against SQLite itself"
+repository = "https://github.com/OWNER/litewalk"
+readme = "README.md"
+keywords = ["sqlite", "database", "forensics", "parser"]
+categories = ["database", "parser-implementations", "command-line-utilities"]
+exclude = ["fuzz/target", "target"]
+license = "MIT"
+
+[lib]
+name = "litewalk"
+path = "src/lib.rs"
+
+[[bin]]
+name = "litewalk"
+path = "src/main.rs"
+
+[dev-dependencies]
+rusqlite = { version = "=0.31.0", features = ["bundled"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+# Tests run the fuzz-style invariants thousands of times; optimize them, but keep the
+# overflow checks and debug assertions that a release build would drop.
+[profile.test]
+opt-level = 2
